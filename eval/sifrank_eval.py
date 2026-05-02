@@ -62,19 +62,23 @@ options_file = "../auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_options.json
 weight_file = "../auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
 
 porter = nltk.PorterStemmer()#please download nltk
+def normalize_eval_phrase(phrase):
+    tokens = phrase.split()
+    return ' '.join(porter.stem(t) for t in tokens)
+
 ELMO = word_emb_elmo.WordEmbeddings(options_file, weight_file, cuda_device=0)
 SIF = sent_emb_sif.SentEmbeddings(ELMO, lamda=lamda, database=database)
 en_model = StanfordCoreNLP(r'E:\Python_Files\stanford-corenlp-full-2018-02-27',quiet=True)#download from https://stanfordnlp.github.io/CoreNLP/
+eval_normalizer = getattr(en_model, "normalize_phrase", normalize_eval_phrase)
 
 try:
     for key, data in data.items():
 
         lables = labels[key]
-        lables_stemed = []
+        lables_normalized = []
 
         for lable in lables:
-            tokens = lable.split()
-            lables_stemed.append(' '.join(porter.stem(t) for t in tokens))
+            lables_normalized.append(eval_normalizer(lable))
 
         print(key)
 
@@ -83,9 +87,8 @@ try:
 
         j = 0
         for temp in dist_sorted[0:15]:
-            tokens = temp[0].split()
-            tt = ' '.join(porter.stem(t) for t in tokens)
-            if (tt in lables_stemed or temp[0] in labels[key]):
+            tt = eval_normalizer(temp[0])
+            if (tt in lables_normalized or temp[0] in labels[key]):
                 if (j < 5):
                     num_c_5 += 1
                     num_c_10 += 1

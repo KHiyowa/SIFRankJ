@@ -17,7 +17,7 @@ GRAMMAR3 = """  NP:
         {<NN.*|JJ|VBG|VBN>*<NN.*>}  # Adjective(s)(optional) + Noun(s)"""
 
 
-def extract_candidates(tokens_tagged, no_subset=False):
+def extract_candidates(tokens_tagged, no_subset=False, joiner=' '):
     """
     Based on part of speech return a list of candidate phrases
     :param text_obj: Input text Representation see @InputTextObj
@@ -30,7 +30,7 @@ def extract_candidates(tokens_tagged, no_subset=False):
     count = 0
     for token in np_pos_tag_tokens:
         if (isinstance(token, nltk.tree.Tree) and token._label == "NP"):
-            np = ' '.join(word for word, tag in token.leaves())
+            np = joiner.join(word for word, tag in token.leaves())
             length = len(token.leaves())
             start_end = (count, count + length)
             count += length

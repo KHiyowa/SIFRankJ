@@ -11,6 +11,9 @@ stop_words = set(stopwords.words("english"))
 wnl=nltk.WordNetLemmatizer()
 considered_tags = {'NN', 'NNS', 'NNP', 'NNPS', 'JJ','VBG'}
 
+def normalize_english_token(word):
+    return wnl.lemmatize(word.lower())
+
 class SentEmbeddings():
 
     def __init__(self,
@@ -19,7 +22,8 @@ class SentEmbeddings():
                  weightfile_finetune='../auxiliary_data/inspec_vocab.txt',
                  weightpara_pretrain=2.7e-4,
                  weightpara_finetune=2.7e-4,
-                 lamda=1.0,database="",embeddings_type="elmo"):
+                 lamda=1.0,database="",embeddings_type="elmo",
+                 token_normalizer=normalize_english_token):
 
         if(database=="Inspec"):
             weightfile_finetune = '../auxiliary_data/inspec_vocab.txt'
@@ -36,6 +40,7 @@ class SentEmbeddings():
         self.lamda=lamda
         self.database=database
         self.embeddings_type=embeddings_type
+        self.token_normalizer=token_normalizer
 
     def get_tokenized_sent_embeddings(self, text_obj, if_DS=False, if_EA=False):
         """
@@ -48,11 +53,11 @@ class SentEmbeddings():
         if(self.embeddings_type=="elmo" and if_DS==False):
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings([text_obj.tokens])
         elif(self.embeddings_type=="elmo" and if_DS==True and if_EA==False):
-            tokens_segmented = get_sent_segmented(text_obj.tokens)
+            tokens_segmented = get_sent_segmented(text_obj.tokens, delimiters=getattr(text_obj, "sentence_delimiters", None))
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings(tokens_segmented)
             elmo_embeddings = splice_embeddings(elmo_embeddings,tokens_segmented)
         elif (self.embeddings_type == "elmo" and if_DS == True and if_EA == True):
-            tokens_segmented = get_sent_segmented(text_obj.tokens)
+            tokens_segmented = get_sent_segmented(text_obj.tokens, delimiters=getattr(text_obj, "sentence_delimiters", None))
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings(tokens_segmented)
             elmo_embeddings = context_embeddings_alignment(elmo_embeddings, tokens_segmented)
             elmo_embeddings = splice_embeddings(elmo_embeddings, tokens_segmented)
@@ -67,7 +72,9 @@ class SentEmbeddings():
 
         candidate_embeddings_list=[]
 
-        weight_list = get_weight_list(self.word2weight_pretrain, self.word2weight_finetune, text_obj.tokens, lamda=self.lamda, database=self.database)
+        token_normalizer = getattr(text_obj, "normalize_token", None) or self.token_normalizer
+        weight_list = get_weight_list(self.word2weight_pretrain, self.word2weight_finetune, text_obj.tokens,
+                                      lamda=self.lamda, database=self.database, normalizer=token_normalizer)
 
         sent_embeddings = get_weighted_average(text_obj.tokens, text_obj.tokens_tagged, weight_list, elmo_embeddings[0], embeddings_type=self.embeddings_type)
 
@@ -127,15 +134,17 @@ def mat_division(vector_a, vector_b):
     #     return
     return torch.from_numpy(numpy.dot(A.I,B))
 
-def get_sent_segmented(tokens):
+def get_sent_segmented(tokens, delimiters=None):
     min_seq_len = 16
+    if delimiters is None:
+        delimiters = {'.'}
     sents_sectioned = []
     if (len(tokens) <= min_seq_len):
         sents_sectioned.append(tokens)
     else:
         position = 0
         for i, token in enumerate(tokens):
-            if (token == '.'):
+            if (token in delimiters):
                 if (i - position >= min_seq_len):
                     sents_sectioned.append(tokens[position:i + 1])
                     position = i + 1
@@ -239,9 +248,9 @@ def get_candidate_weighted_average(tokenized_sents, weight_list, embeddings_list
 
     return 0
 
-def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight"):
+def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight", normalizer=normalize_english_token):
 
-    word=wnl.lemmatize(word)
+    word=normalizer(word)
 
     if(word in word2weight):#
         return word2weight[word]
@@ -258,22 +267,23 @@ def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight"):
     if(method=="max_weight"):#Return the max weight of word in the tokenized_sents
         max=0.0
         for w in tokenized_sents:
+            w = normalizer(w)
             if(w in word2weight and word2weight[w]>max):
                 max=word2weight[w]
         return max
     return 0.0
 
-def get_weight_list(word2weight_pretrain, word2weight_finetune, tokenized_sents, lamda, database=""):
+def get_weight_list(word2weight_pretrain, word2weight_finetune, tokenized_sents, lamda, database="", normalizer=normalize_english_token):
     weight_list = []
     for word in tokenized_sents:
-        word = word.lower()
+        word = normalizer(word)
 
         if(database==""):
-            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight")
+            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight", normalizer=normalizer)
             weight=weight_pretrain
         else:
-            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight")
-            weight_finetune = get_oov_weight(tokenized_sents, word2weight_finetune, word, method="max_weight")
+            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight", normalizer=normalizer)
+            weight_finetune = get_oov_weight(tokenized_sents, word2weight_finetune, word, method="max_weight", normalizer=normalizer)
             weight = lamda * weight_pretrain + (1.0 - lamda) * weight_finetune
         weight_list.append(weight)
 

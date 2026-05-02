@@ -32,7 +32,6 @@ import time
 options_file = "../auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_options.json"
 weight_file = "../auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
 
-porter = nltk.PorterStemmer()
 ELMO = word_emb_elmo.WordEmbeddings(options_file, weight_file, cuda_device=0)
 SIF = sent_emb_sif.SentEmbeddings(ELMO, lamda=1.0)
 en_model = StanfordCoreNLP(r'E:\Python_Files\stanford-corenlp-full-2018-02-27',quiet=True)#download from https://stanfordnlp.github.io/CoreNLP/
