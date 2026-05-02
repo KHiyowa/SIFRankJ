@@ -10,11 +10,18 @@ Added new algorithms ``DS``(document segmentation) and ``EA``(embeddings alignme
 A little change of SIFRank+ in ``./model/method.py`` about making a simple normalization of position_score.
 ## Environment
 ```
-Python 3.6
-nltk 3.4.3
-StanfordCoreNLP 3.9.1.1
-torch 1.1.0
-allennlp 0.8.4
+Python 3.8+
+allennlp 2.10.1
+ginza 5.1.3
+ja-ginza 5.1.3
+spacy >=3.3,<3.4
+StanfordCoreNLP 3.9.1.1 (for the original English pipeline)
+```
+
+Install Python dependencies with:
+
+```
+pip install -r requirements.txt
 ```
 ## Download
 * ELMo ``elmo_2x4096_512_2048cnn_2xhighway_options.json`` and ``elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5`` from [here](https://allennlp.org/elmo) , and save it to the ``auxiliary_data/`` directory
