@@ -17,6 +17,7 @@ numpy 1.23.5
 scipy 1.10.1
 scikit-learn 1.2.2
 allennlp 2.10.1
+elmoformanylangs 0.0.4.post2
 ginza 5.1.3
 ja-ginza 5.1.3
 spacy >=3.3,<3.4
@@ -30,6 +31,7 @@ python3.10 -m pip install --no-cache-dir -r requirements.txt
 ```
 ## Download
 * ELMo ``elmo_2x4096_512_2048cnn_2xhighway_options.json`` and ``elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5`` from [here](https://allennlp.org/elmo) , and save it to the ``auxiliary_data/`` directory
+* ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``.
 * StanfordCoreNLP ``stanford-corenlp-full-2018-02-27`` from [here](https://stanfordnlp.github.io/CoreNLP/), and save it to anywhere
 
 ## Usage
