@@ -315,14 +315,27 @@ def get_word_weight(weightfile="", weightpara=2.7e-4):
         lines = f.readlines()
     # sum_num_words = 0
     sum_fre_words = 0
+    skipped = 0
     for line in lines:
-        word_fre = line.split()
+        line = line.strip()
+        if not line:
+            continue
+        word_fre = line.rsplit(maxsplit=1)
         # sum_num_words += 1
         if (len(word_fre) == 2):
-            word2fre[word_fre[0]] = float(word_fre[1])
-            sum_fre_words += float(word_fre[1])
+            try:
+                frequency = float(word_fre[1])
+            except ValueError:
+                skipped += 1
+                continue
+            word2fre[word_fre[0]] = frequency
+            sum_fre_words += frequency
         else:
-            print(line)
+            skipped += 1
+    if skipped > 0:
+        print("Skipped " + str(skipped) + " malformed word frequency lines in " + weightfile)
+    if sum_fre_words == 0.0:
+        return word2weight
     for key, value in word2fre.items():
         word2weight[key] = weightpara / (weightpara + value / sum_fre_words)
         # word2weight[key] = 1.0 #method of RVA
