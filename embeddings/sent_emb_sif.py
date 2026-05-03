@@ -3,6 +3,7 @@
 # __author__ = "Sponge"
 # Date: 2019/6/19
 import numpy
+import os
 import torch
 import nltk
 from nltk.corpus import stopwords
@@ -13,6 +14,23 @@ considered_tags = {'NN', 'NNS', 'NNP', 'NNPS', 'JJ','VBG'}
 
 def normalize_english_token(word):
     return wnl.lemmatize(word.lower())
+
+def resolve_weightfile_path(weightfile):
+    if os.path.exists(weightfile):
+        return weightfile
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(module_dir)
+    candidates = [
+        os.path.join(module_dir, weightfile),
+        os.path.join(project_root, weightfile),
+        os.path.join(project_root, weightfile.lstrip("./")),
+    ]
+    if weightfile.startswith("../"):
+        candidates.append(os.path.join(project_root, weightfile[3:]))
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return weightfile
 
 class SentEmbeddings():
 
@@ -35,7 +53,9 @@ class SentEmbeddings():
             weightfile_finetune = '../auxiliary_data/enwiki_vocab_min200.txt'
 
         self.word2weight_pretrain = get_word_weight(weightfile_pretrain, weightpara_pretrain)
-        self.word2weight_finetune = get_word_weight(weightfile_finetune, weightpara_finetune)
+        self.word2weight_finetune = {}
+        if database != "":
+            self.word2weight_finetune = get_word_weight(weightfile_finetune, weightpara_finetune)
         self.word_embeddor = word_embeddor
         self.lamda=lamda
         self.database=database
@@ -311,6 +331,7 @@ def get_word_weight(weightfile="", weightpara=2.7e-4):
         weightpara = 1.0
     word2weight = {}
     word2fre = {}
+    weightfile = resolve_weightfile_path(weightfile)
     with open(weightfile, encoding='UTF-8') as f:
         lines = f.readlines()
     # sum_num_words = 0
