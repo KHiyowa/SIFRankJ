@@ -16,6 +16,7 @@ torchvision 0.13.1
 numpy 1.23.5
 scipy 1.10.1
 scikit-learn 1.2.2
+overrides 3.1.0
 allennlp 2.10.1
 elmoformanylangs 0.0.4.post2
 ginza 5.1.3
