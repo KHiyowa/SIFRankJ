@@ -30,6 +30,12 @@ Install Python dependencies with:
 ```
 python3.10 -m pip install --no-cache-dir -r requirements.txt
 ```
+
+For CUDA 11.3 PyTorch on Ampere GPUs such as RTX 3090:
+
+```
+python3.10 -m pip install --no-cache-dir --force-reinstall -r requirements-gpu-cu113.txt
+```
 ## Download
 * ELMo ``elmo_2x4096_512_2048cnn_2xhighway_options.json`` and ``elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5`` from [here](https://allennlp.org/elmo) , and save it to the ``auxiliary_data/`` directory
 * ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``. The ELMoForManyLangs wrapper runs on CPU by default; pass ``cuda_device=0`` only when your PyTorch CUDA build supports your GPU.
