@@ -13,9 +13,18 @@ class WordEmbeddings():
     token_embedder.pkl, word.dic, and char.dic.
     """
 
-    def __init__(self, model_dir="../auxiliary_data/ja.model", batch_size=64, cuda_device=0):
+    def __init__(self, model_dir="../auxiliary_data/ja.model", batch_size=64, cuda_device=-1):
         self.cuda_device = cuda_device
-        self.elmo = Embedder(model_dir, batch_size=batch_size)
+        if self.cuda_device > -1:
+            torch.cuda.set_device(self.cuda_device)
+            self.elmo = Embedder(model_dir, batch_size=batch_size)
+        else:
+            cuda_is_available = torch.cuda.is_available
+            torch.cuda.is_available = lambda: False
+            try:
+                self.elmo = Embedder(model_dir, batch_size=batch_size)
+            finally:
+                torch.cuda.is_available = cuda_is_available
 
     def get_tokenized_words_embeddings(self, sents_tokened):
         embeddings = []

@@ -32,7 +32,7 @@ python3.10 -m pip install --no-cache-dir -r requirements.txt
 ```
 ## Download
 * ELMo ``elmo_2x4096_512_2048cnn_2xhighway_options.json`` and ``elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5`` from [here](https://allennlp.org/elmo) , and save it to the ``auxiliary_data/`` directory
-* ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``.
+* ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``. The ELMoForManyLangs wrapper runs on CPU by default; pass ``cuda_device=0`` only when your PyTorch CUDA build supports your GPU.
 * StanfordCoreNLP ``stanford-corenlp-full-2018-02-27`` from [here](https://stanfordnlp.github.io/CoreNLP/), and save it to anywhere
 
 ``GinzaNLPAdapter`` uses GiNZA's built-in ``STOP_WORDS`` by default. Pass ``stopwords=[]`` to disable them or pass your own iterable to override them.
