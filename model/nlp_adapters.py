@@ -8,6 +8,15 @@ def normalize_identity(text):
     return unicodedata.normalize("NFKC", text)
 
 
+def load_ginza_stopwords():
+    try:
+        import ginza
+    except ImportError:
+        return set()
+    stopwords = set(getattr(ginza, "STOP_WORDS", set()))
+    return stopwords | {normalize_identity(word) for word in stopwords}
+
+
 class GinzaNLPAdapter:
     """Small StanfordCoreNLP-compatible wrapper for GiNZA/spaCy."""
 
@@ -18,13 +27,15 @@ class GinzaNLPAdapter:
         "NUM": "NN",
     }
 
-    def __init__(self, model_name="ja_ginza", stopwords=None, disable=None):
+    def __init__(self, model_name="ja_ginza", stopwords=None, disable=None, use_ginza_stopwords=True):
         try:
             import spacy
         except ImportError:
             raise ImportError("GinzaNLPAdapter requires spaCy and GiNZA. Install them before using this adapter.")
 
         self.nlp = spacy.load(model_name, disable=disable or [])
+        if stopwords is None and use_ginza_stopwords:
+            stopwords = load_ginza_stopwords()
         self.stopwords = set(stopwords or [])
         self.phrase_joiner = ""
         self.sentence_delimiters = {"\u3002", "\uff0e", "\uff01", "\uff1f", ".", "!", "?"}
@@ -46,7 +57,7 @@ class GinzaNLPAdapter:
             if token.is_space:
                 continue
             pos = self.POS_MAP.get(token.pos_, "IN")
-            if token.text in self.stopwords or token.is_punct:
+            if token.text in self.stopwords or normalize_identity(token.text) in self.stopwords or token.is_punct:
                 pos = "IN"
             tagged.append((token.text, pos))
         return tagged

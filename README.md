@@ -34,6 +34,8 @@ python3.10 -m pip install --no-cache-dir -r requirements.txt
 * ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``.
 * StanfordCoreNLP ``stanford-corenlp-full-2018-02-27`` from [here](https://stanfordnlp.github.io/CoreNLP/), and save it to anywhere
 
+``GinzaNLPAdapter`` uses GiNZA's built-in ``STOP_WORDS`` by default. Pass ``stopwords=[]`` to disable them or pass your own iterable to override them.
+
 ## Usage
 ```
 import nltk
