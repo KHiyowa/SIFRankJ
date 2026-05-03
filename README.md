@@ -73,6 +73,15 @@ keyphrases_ = SIFRank_plus(text, SIF, en_model, N=15, elmo_layers_weight=elmo_la
 print(keyphrases)
 print(keyphrases_)
 ```
+
+Use ``extract_keyphrases`` to switch between SIFRank and SIFRank+:
+
+```
+from model.method import extract_keyphrases
+
+keyphrases = extract_keyphrases(text, SIF, ja_model, rank_method="sifrank", N=15)
+keyphrases_plus = extract_keyphrases(text, SIF, ja_model, rank_method="sifrank_plus", N=15, position_bias=3.4)
+```
 ## Evaluate the model
 Use this ``eval/sifrank_eval.py`` to evaluate SIFRank on ``Inspec``, ``SemEval2017`` and ``DUC2001 datasets``
 We also have evaluation codes for other baseline models. We will organize and upload them later, so stay tuned.

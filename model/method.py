@@ -227,3 +227,25 @@ def SIFRank_plus(text, SIF, en_model, method="average", N=15,
             dist_final[np] = dist*position_score[np]/average_score#Little change here
     dist_sorted = sorted(dist_final.items(), key=lambda x: x[1], reverse=True)
     return dist_sorted[0:N]
+
+
+def extract_keyphrases(text, SIF, en_model, rank_method="sifrank", method="average", N=15,
+            sent_emb_method="elmo", elmo_layers_weight=[0.0, 1.0, 0.0], if_DS=True, if_EA=True, position_bias=3.4):
+    """
+    Dispatch keyphrase extraction between SIFRank and SIFRank+.
+    :param rank_method: 'sifrank' or 'sifrank_plus' (also accepts 'sifrank+' and 'plus')
+    """
+    rank_method = rank_method.lower()
+    if rank_method in {"sifrank", "base"}:
+        return SIFRank(
+            text, SIF, en_model, method=method, N=N,
+            sent_emb_method=sent_emb_method, elmo_layers_weight=elmo_layers_weight,
+            if_DS=if_DS, if_EA=if_EA
+        )
+    if rank_method in {"sifrank_plus", "sifrank+", "plus"}:
+        return SIFRank_plus(
+            text, SIF, en_model, method=method, N=N,
+            sent_emb_method=sent_emb_method, elmo_layers_weight=elmo_layers_weight,
+            if_DS=if_DS, if_EA=if_EA, position_bias=position_bias
+        )
+    raise ValueError("rank_method must be 'sifrank' or 'sifrank_plus'.")
