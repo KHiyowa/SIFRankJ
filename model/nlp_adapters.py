@@ -17,6 +17,19 @@ def load_ginza_stopwords():
     return stopwords | {normalize_identity(word) for word in stopwords}
 
 
+def set_ginza_split_mode(nlp, split_mode):
+    if split_mode is None:
+        return
+    split_mode = split_mode.upper()
+    if split_mode not in {"A", "B", "C"}:
+        raise ValueError("split_mode must be one of 'A', 'B', 'C', or None.")
+    try:
+        import ginza
+    except ImportError:
+        raise ImportError("split_mode requires GiNZA. Install ginza before using this adapter.")
+    ginza.set_split_mode(nlp, split_mode)
+
+
 class GinzaNLPAdapter:
     """Small StanfordCoreNLP-compatible wrapper for GiNZA/spaCy."""
 
@@ -27,13 +40,15 @@ class GinzaNLPAdapter:
         "NUM": "NN",
     }
 
-    def __init__(self, model_name="ja_ginza", stopwords=None, disable=None, use_ginza_stopwords=True):
+    def __init__(self, model_name="ja_ginza", stopwords=None, disable=None, use_ginza_stopwords=True, split_mode=None):
         try:
             import spacy
         except ImportError:
             raise ImportError("GinzaNLPAdapter requires spaCy and GiNZA. Install them before using this adapter.")
 
         self.nlp = spacy.load(model_name, disable=disable or [])
+        set_ginza_split_mode(self.nlp, split_mode)
+        self.split_mode = split_mode.upper() if split_mode is not None else None
         if stopwords is None and use_ginza_stopwords:
             stopwords = load_ginza_stopwords()
         self.stopwords = set(stopwords or [])

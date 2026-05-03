@@ -42,6 +42,13 @@ python3.10 -m pip install --no-cache-dir --force-reinstall -r requirements-gpu-c
 * StanfordCoreNLP ``stanford-corenlp-full-2018-02-27`` from [here](https://stanfordnlp.github.io/CoreNLP/), and save it to anywhere
 
 ``GinzaNLPAdapter`` uses GiNZA's built-in ``STOP_WORDS`` by default. Pass ``stopwords=[]`` to disable them or pass your own iterable to override them.
+Pass ``split_mode="A"``, ``"B"``, or ``"C"`` to control Sudachi tokenization granularity.
+
+Build Japanese Wikipedia frequency files for split modes A and B with:
+
+```
+python3.10 util/build_ja_wikipedia_vocab.py /path/to/wikiextractor/output --modes A B --output-dir auxiliary_data --output-prefix ja_wikipedia_vocab --use-ginza-stopwords
+```
 
 ## Usage
 ```
