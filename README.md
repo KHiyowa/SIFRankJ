@@ -53,8 +53,8 @@ python3.10 util/build_ja_wikipedia_vocab.py /path/to/wikiextractor/output --mode
 For large corpora, run Java Sudachi from the counter script:
 
 ```
-python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode A --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_A.txt
-python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode B --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_B.txt
+python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode A --workers 32 --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_A.txt
+python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode B --workers 32 --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_B.txt
 ```
 
 ## Usage
