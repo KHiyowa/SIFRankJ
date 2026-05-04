@@ -41,6 +41,20 @@ def article_id(article, fallback):
     return get_field(article, "article_id", fallback)
 
 
+def flatten_articles(articles):
+    if isinstance(articles, dict):
+        flattened = []
+        for category, category_articles in articles.items():
+            for article in category_articles:
+                flattened.append({"category": category, "article": article})
+        return flattened
+
+    return [
+        {"category": get_field(article, "category", None), "article": article}
+        for article in articles
+    ]
+
+
 def raw_dollar_keywords(article):
     keywords = get_field(article, "keyword_with_dollar", None)
     if keywords is not None:
@@ -205,6 +219,7 @@ def write_csv(article_results, summary, cutoffs, output_path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "scope",
+        "category",
         "article_id",
         "cutoff",
         "precision",
@@ -225,6 +240,7 @@ def write_csv(article_results, summary, cutoffs, output_path):
                 metrics = result["metrics"][cutoff]
                 writer.writerow({
                     "scope": "article",
+                    "category": result["category"],
                     "article_id": result["article_id"],
                     "cutoff": cutoff,
                     "precision": metrics["precision"],
@@ -241,6 +257,7 @@ def write_csv(article_results, summary, cutoffs, output_path):
             metrics = summary[cutoff]
             writer.writerow({
                 "scope": "summary",
+                "category": "",
                 "article_id": "",
                 "cutoff": cutoff,
                 "precision": metrics["precision"],
@@ -276,12 +293,15 @@ def evaluate_articles(articles, sif, ja_model, args):
     cutoffs = parse_cutoffs(args.cutoffs)
     article_results = []
     skipped = []
-    for index, article in enumerate(articles, start=1):
+    for index, record in enumerate(flatten_articles(articles), start=1):
+        article = record["article"]
+        category = record["category"]
         text = article_text(article)
         gold = gold_keywords_in_text(article, text)
         current_id = article_id(article, index)
         if not gold:
             skipped.append({
+                "category": category,
                 "article_id": current_id,
                 "reason": "no keyword_with_dollar appears in article text",
             })
@@ -300,13 +320,14 @@ def evaluate_articles(articles, sif, ja_model, args):
         predictions = dedupe_predictions(keyphrases)
         metrics = evaluate_predictions(predictions, gold, cutoffs)
         article_results.append({
+            "category": category,
             "article_id": current_id,
             "title": get_field(article, "title", ""),
             "gold": gold,
             "predictions": predictions,
             "metrics": metrics,
         })
-        print("evaluated " + str(len(article_results)) + " articles: " + str(current_id))
+        print("evaluated " + str(len(article_results)) + " articles: " + str(category) + "/" + str(current_id))
 
     summary = aggregate_article_metrics(article_results, cutoffs)
     return {
