@@ -65,6 +65,13 @@ def should_count_token(token, allowed_pos, stopwords, min_token_len):
     return text
 
 
+def load_stopwords(nlp):
+    stopwords = set(getattr(ginza, "STOP_WORDS", set()))
+    if not stopwords:
+        stopwords = set(getattr(nlp.Defaults, "stop_words", set()))
+    return {unicodedata.normalize("NFKC", word) for word in stopwords}
+
+
 def build_counter(nlp, input_paths, allowed_pos, stopwords, min_token_len, encoding, max_docs=None):
     counter = Counter()
     docs_seen = 0
@@ -98,7 +105,7 @@ def parse_args():
     parser.add_argument("--model", default="ja_ginza", help="spaCy/GiNZA model name.")
     parser.add_argument("--modes", nargs="+", default=["A", "B"], choices=["A", "B", "C"], help="Sudachi split modes.")
     parser.add_argument("--pos", nargs="*", default=sorted(DEFAULT_POS), help="UPOS tags to count. Use --pos with no values to count all POS.")
-    parser.add_argument("--use-ginza-stopwords", action="store_true", help="Exclude ginza.STOP_WORDS.")
+    parser.add_argument("--use-ginza-stopwords", action="store_true", help="Exclude GiNZA/spaCy model stopwords.")
     parser.add_argument("--min-count", type=int, default=1, help="Minimum count to write.")
     parser.add_argument("--min-token-len", type=int, default=1, help="Minimum token length to count.")
     parser.add_argument("--encoding", default="utf-8", help="Input file encoding.")
@@ -109,10 +116,10 @@ def parse_args():
 def main():
     args = parse_args()
     allowed_pos = set(args.pos) if args.pos else None
-    stopwords = {unicodedata.normalize("NFKC", word) for word in ginza.STOP_WORDS} if args.use_ginza_stopwords else set()
     output_dir = Path(args.output_dir)
 
     nlp = spacy.load(args.model)
+    stopwords = load_stopwords(nlp) if args.use_ginza_stopwords else set()
     for mode in args.modes:
         ginza.set_split_mode(nlp, mode)
         counter = build_counter(

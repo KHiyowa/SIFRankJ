@@ -8,12 +8,14 @@ def normalize_identity(text):
     return unicodedata.normalize("NFKC", text)
 
 
-def load_ginza_stopwords():
+def load_ginza_stopwords(nlp=None):
     try:
         import ginza
     except ImportError:
-        return set()
-    stopwords = set(getattr(ginza, "STOP_WORDS", set()))
+        ginza = None
+    stopwords = set(getattr(ginza, "STOP_WORDS", set())) if ginza is not None else set()
+    if not stopwords and nlp is not None:
+        stopwords = set(getattr(nlp.Defaults, "stop_words", set()))
     return stopwords | {normalize_identity(word) for word in stopwords}
 
 
@@ -50,7 +52,7 @@ class GinzaNLPAdapter:
         set_ginza_split_mode(self.nlp, split_mode)
         self.split_mode = split_mode.upper() if split_mode is not None else None
         if stopwords is None and use_ginza_stopwords:
-            stopwords = load_ginza_stopwords()
+            stopwords = load_ginza_stopwords(self.nlp)
         self.stopwords = set(stopwords or [])
         self.phrase_joiner = ""
         self.sentence_delimiters = {"\u3002", "\uff0e", "\uff01", "\uff1f", ".", "!", "?"}
