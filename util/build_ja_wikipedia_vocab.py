@@ -13,6 +13,7 @@ import spacy
 
 DEFAULT_POS = {"NOUN", "PROPN", "ADJ", "NUM"}
 TEXT_SUFFIXES = {".txt", ".text", ".json", ".jsonl"}
+DEFAULT_MAX_BYTES = 48000
 
 
 def iter_input_files(paths):
@@ -52,6 +53,55 @@ def iter_texts(path, encoding):
         yield path.read_text(encoding=encoding, errors="ignore")
 
 
+def split_text(text, max_bytes):
+    current = []
+    current_bytes = 0
+    for paragraph in text.splitlines():
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        paragraph_bytes = len(paragraph.encode("utf-8"))
+        if paragraph_bytes > max_bytes:
+            for sentence in paragraph.replace("\u3002", "\u3002\n").splitlines():
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
+                sentence_bytes = len(sentence.encode("utf-8"))
+                if sentence_bytes > max_bytes:
+                    start = 0
+                    while start < len(sentence):
+                        chunk = sentence[start:start + max_bytes // 3]
+                        yield chunk
+                        start += max_bytes // 3
+                    continue
+                if current and current_bytes + sentence_bytes > max_bytes:
+                    yield "\n".join(current)
+                    current = []
+                    current_bytes = 0
+                current.append(sentence)
+                current_bytes += sentence_bytes
+            continue
+        if current and current_bytes + paragraph_bytes > max_bytes:
+            yield "\n".join(current)
+            current = []
+            current_bytes = 0
+        current.append(paragraph)
+        current_bytes += paragraph_bytes
+    if current:
+        yield "\n".join(current)
+
+
+def iter_text_chunks(input_paths, encoding, max_bytes, max_docs=None):
+    docs_seen = 0
+    for path in iter_input_files(input_paths):
+        for text in iter_texts(path, encoding):
+            docs_seen += 1
+            for chunk in split_text(text, max_bytes):
+                yield chunk
+            if max_docs is not None and docs_seen >= max_docs:
+                return
+
+
 def should_count_token(token, allowed_pos, stopwords, min_token_len):
     text = unicodedata.normalize("NFKC", token.text.strip())
     if len(text) < min_token_len:
@@ -72,19 +122,14 @@ def load_stopwords(nlp):
     return {unicodedata.normalize("NFKC", word) for word in stopwords}
 
 
-def build_counter(nlp, input_paths, allowed_pos, stopwords, min_token_len, encoding, max_docs=None):
+def build_counter(nlp, input_paths, allowed_pos, stopwords, min_token_len, encoding, max_bytes, batch_size, n_process, max_docs=None):
     counter = Counter()
-    docs_seen = 0
-    for path in iter_input_files(input_paths):
-        for text in iter_texts(path, encoding):
-            doc = nlp(text)
-            docs_seen += 1
-            for token in doc:
-                token_text = should_count_token(token, allowed_pos, stopwords, min_token_len)
-                if token_text:
-                    counter[token_text] += 1
-            if max_docs is not None and docs_seen >= max_docs:
-                return counter
+    texts = iter_text_chunks(input_paths, encoding, max_bytes, max_docs=max_docs)
+    for doc in nlp.pipe(texts, batch_size=batch_size, n_process=n_process):
+        for token in doc:
+            token_text = should_count_token(token, allowed_pos, stopwords, min_token_len)
+            if token_text:
+                counter[token_text] += 1
     return counter
 
 
@@ -109,6 +154,9 @@ def parse_args():
     parser.add_argument("--min-count", type=int, default=1, help="Minimum count to write.")
     parser.add_argument("--min-token-len", type=int, default=1, help="Minimum token length to count.")
     parser.add_argument("--encoding", default="utf-8", help="Input file encoding.")
+    parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES, help="Maximum UTF-8 bytes per spaCy/GiNZA input chunk.")
+    parser.add_argument("--batch-size", type=int, default=100, help="spaCy nlp.pipe batch size.")
+    parser.add_argument("--n-process", type=int, default=1, help="spaCy nlp.pipe worker processes.")
     parser.add_argument("--max-docs", type=int, default=None, help="Optional document limit for smoke tests.")
     return parser.parse_args()
 
@@ -129,6 +177,9 @@ def main():
             stopwords,
             args.min_token_len,
             args.encoding,
+            args.max_bytes,
+            args.batch_size,
+            args.n_process,
             max_docs=args.max_docs,
         )
         output_path = output_dir / (args.output_prefix + "_" + mode + ".txt")
