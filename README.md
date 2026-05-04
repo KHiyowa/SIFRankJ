@@ -50,13 +50,11 @@ Build Japanese Wikipedia frequency files for split modes A and B with:
 python3.10 util/build_ja_wikipedia_vocab.py /path/to/wikiextractor/output --modes A B --output-dir auxiliary_data --output-prefix ja_wikipedia_vocab --use-ginza-stopwords
 ```
 
-For large corpora, tokenize first with Sudachi's Java CLI and then count tokenized output:
+For large corpora, run Java Sudachi from the counter script:
 
 ```
-java -jar sudachi.jar -m A -o wiki_A.sudachi wiki.txt
-java -jar sudachi.jar -m B -o wiki_B.sudachi wiki.txt
-python3.10 util/count_sudachi_tokens.py wiki_A.sudachi --output auxiliary_data/ja_wikipedia_vocab_A.txt
-python3.10 util/count_sudachi_tokens.py wiki_B.sudachi --output auxiliary_data/ja_wikipedia_vocab_B.txt
+python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode A --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_A.txt
+python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode B --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_B.txt
 ```
 
 ## Usage

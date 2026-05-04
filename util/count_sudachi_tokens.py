@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import subprocess
+import tempfile
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -60,6 +62,44 @@ def build_counter(input_paths, allowed_pos, stopwords, min_token_len, encoding):
     return counter
 
 
+def count_sudachi_output(path, counter, allowed_pos, stopwords, min_token_len, encoding):
+    with path.open(encoding=encoding, errors="ignore") as f:
+        for line in f:
+            parsed = parse_sudachi_line(line)
+            if parsed is None:
+                continue
+            surface, pos = parsed
+            token = should_count(surface, pos, allowed_pos, stopwords, min_token_len)
+            if token:
+                counter[token] += 1
+
+
+def run_sudachi(java_cmd, jar_path, split_mode, input_path, output_path):
+    command = [java_cmd, "-jar", str(jar_path), "-m", split_mode, "-o", str(output_path), str(input_path)]
+    subprocess.run(command, check=True)
+
+
+def build_counter_with_sudachi(input_paths, allowed_pos, stopwords, min_token_len, encoding, java_cmd, jar_path, split_mode, keep_sudachi_output, sudachi_output_dir):
+    counter = Counter()
+    if keep_sudachi_output:
+        sudachi_output_dir.mkdir(parents=True, exist_ok=True)
+        for i, input_path in enumerate(iter_input_files(input_paths), start=1):
+            output_path = sudachi_output_dir / (input_path.name + "." + split_mode + ".sudachi")
+            print("[" + str(i) + "] sudachi " + str(input_path))
+            run_sudachi(java_cmd, jar_path, split_mode, input_path, output_path)
+            count_sudachi_output(output_path, counter, allowed_pos, stopwords, min_token_len, encoding)
+        return counter
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        for i, input_path in enumerate(iter_input_files(input_paths), start=1):
+            output_path = temp_dir / (input_path.name + "." + split_mode + ".sudachi")
+            print("[" + str(i) + "] sudachi " + str(input_path))
+            run_sudachi(java_cmd, jar_path, split_mode, input_path, output_path)
+            count_sudachi_output(output_path, counter, allowed_pos, stopwords, min_token_len, encoding)
+    return counter
+
+
 def write_counter(counter, output_path, min_count):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -70,9 +110,15 @@ def write_counter(counter, output_path, min_count):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Count Sudachi CLI token output into a SIFRankJ frequency file.")
-    parser.add_argument("inputs", nargs="+", help="Sudachi tokenized files or directories.")
+    parser = argparse.ArgumentParser(description="Build a SIFRankJ frequency file from text via Java Sudachi, or count existing Sudachi output.")
+    parser.add_argument("inputs", nargs="+", help="Input text files/directories, or Sudachi tokenized files with --pretokenized.")
     parser.add_argument("--output", required=True, help="Output vocabulary file.")
+    parser.add_argument("--java", default="java", help="Java executable.")
+    parser.add_argument("--sudachi-jar", default="../sudachi/sudachi-0.7.5.jar", help="Path to Sudachi Java jar.")
+    parser.add_argument("--mode", default="A", choices=["A", "B", "C"], help="Sudachi split mode.")
+    parser.add_argument("--pretokenized", action="store_true", help="Treat inputs as existing Sudachi tokenized output.")
+    parser.add_argument("--keep-sudachi-output", action="store_true", help="Keep intermediate Sudachi output files.")
+    parser.add_argument("--sudachi-output-dir", default="data/sudachi", help="Directory for kept Sudachi output files.")
     parser.add_argument("--pos", nargs="*", default=DEFAULT_POS, help="Japanese POS names to count. Use --pos with no values to count all POS.")
     parser.add_argument("--stopwords", default=None, help="Optional newline-separated stopword file.")
     parser.add_argument("--min-count", type=int, default=1, help="Minimum count to write.")
@@ -88,7 +134,21 @@ def main():
     if args.stopwords:
         with open(args.stopwords, encoding="utf-8") as f:
             stopwords = {unicodedata.normalize("NFKC", line.strip()) for line in f if line.strip()}
-    counter = build_counter(args.inputs, allowed_pos, stopwords, args.min_token_len, args.encoding)
+    if args.pretokenized:
+        counter = build_counter(args.inputs, allowed_pos, stopwords, args.min_token_len, args.encoding)
+    else:
+        counter = build_counter_with_sudachi(
+            args.inputs,
+            allowed_pos,
+            stopwords,
+            args.min_token_len,
+            args.encoding,
+            args.java,
+            Path(args.sudachi_jar),
+            args.mode,
+            args.keep_sudachi_output,
+            Path(args.sudachi_output_dir),
+        )
     write_counter(counter, Path(args.output), args.min_count)
     print("wrote " + args.output + " (" + str(len(counter)) + " tokens)")
 
