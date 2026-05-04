@@ -57,6 +57,8 @@ python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode A -
 python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode B --workers 32 --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_B.txt
 ```
 
+The counter script decodes WikiExtractor JSONL inputs and sends only their text fields to Sudachi by default.
+
 ## Usage
 ```
 import nltk
