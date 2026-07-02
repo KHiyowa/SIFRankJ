@@ -136,7 +136,7 @@ def softmax(x):
     return softmax_x
 
 
-def get_position_score(keyphrase_candidate_list, position_bias):
+def get_position_score(keyphrase_candidate_list, token_to_pos, alpha=0.5):
     length = len(keyphrase_candidate_list)
     position_score ={}
     for i,kc in enumerate(keyphrase_candidate_list):
@@ -148,7 +148,8 @@ def get_position_score(keyphrase_candidate_list, position_bias):
 
             position_score[np] += 0.0
         else:
-            position_score[np] = 1/(float(i)+1+position_bias)
+            n, m = token_to_pos.get(p, (1, 1))
+            position_score[np] = (1.0 - alpha) * (1.0 / n) + alpha * (1.0 / m)
     score_list=[]
     for np,score in position_score.items():
         score_list.append(score)
@@ -187,7 +188,7 @@ def SIFRank(text, SIF, en_model, method="average", N=15,
     return dist_sorted[0:N]
 
 def SIFRank_plus(text, SIF, en_model, method="average", N=15,
-            sent_emb_method="elmo", elmo_layers_weight=[0.0, 1.0, 0.0], if_DS=True, if_EA=True, position_bias = 3.4):
+            sent_emb_method="elmo", elmo_layers_weight=[0.0, 1.0, 0.0], if_DS=True, if_EA=True, alpha=0.5):
     """
     :param text_obj:
     :param sent_embeddings:
@@ -201,7 +202,7 @@ def SIFRank_plus(text, SIF, en_model, method="average", N=15,
     """
     text_obj = input_representation.InputTextObj(en_model, text)
     sent_embeddings, candidate_embeddings_list = SIF.get_tokenized_sent_embeddings(text_obj,if_DS=if_DS,if_EA=if_EA)
-    position_score = get_position_score(text_obj.keyphrase_candidate, position_bias)
+    position_score = get_position_score(text_obj.keyphrase_candidate, text_obj.token_to_pos, alpha)
     average_score = sum(position_score.values()) / (float)(len(position_score))#Little change here
     dist_list = []
     for i, emb in enumerate(candidate_embeddings_list):

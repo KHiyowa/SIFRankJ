@@ -13,8 +13,8 @@ SCRIPT=eval/evaluate_english_articles.py
 OUTDIR=eval_results/shards
 METHOD=sifrank_plus
 DATABASE=enwiki
-FINAL_JSON=eval_results/english_articles_${METHOD}_filtered.json
-FINAL_CSV=eval_results/english_articles_${METHOD}_filtered.csv
+FINAL_JSON=eval_results/english_articles_${METHOD}_structural.json
+FINAL_CSV=eval_results/english_articles_${METHOD}_structural.csv
 
 mkdir -p "$OUTDIR"
 
@@ -31,7 +31,7 @@ for i in $(seq 0 $((WORKERS - 1))); do
         --port "$port" \
         --rank-method "$METHOD" \
         --database "$DATABASE" \
-        --filter-first-para \
+        --alpha 0.07 \
         --output "$out" \
         > "$OUTDIR/shard_${i}.log" 2>&1 &
     pids+=($!)

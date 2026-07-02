@@ -344,7 +344,7 @@ def evaluate_articles(data, labels, sif, en_model, args):
                 text, sif, en_model,
                 N=args.max_rank,
                 elmo_layers_weight=elmo_layers_weight,
-                position_bias=args.position_bias,
+                alpha=args.alpha,
             )
         else:
             kp_list = rank_fn(
@@ -370,7 +370,8 @@ def evaluate_articles(data, labels, sif, en_model, args):
             "database": args.database,
             "cutoffs": cutoffs,
             "max_rank": args.max_rank,
-            "position_bias": args.position_bias,
+            "lamda": args.lamda,
+            "alpha": args.alpha,
             "elmo_layers_weight": elmo_layers_weight,
         },
         "summary": summary,
@@ -453,7 +454,7 @@ def parse_args():
                        choices=["sifrank", "sifrank_plus", "sifrank+"])
     run_p.add_argument("--database", default="Duc2001")
     run_p.add_argument("--lamda", type=float, default=1.0)
-    run_p.add_argument("--position-bias", type=float, default=3.4)
+    run_p.add_argument("--alpha", type=float, default=0.5, help="Balancing parameter for structural weight.")
     run_p.add_argument("--elmo-layers-weight", default="1.0,0.0,0.0")
     run_p.add_argument("--cutoffs", default=",".join(DEFAULT_CUTOFFS))
     run_p.add_argument("--max-rank", type=int, default=1000)
