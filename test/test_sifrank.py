@@ -5,14 +5,25 @@ SIFRank 動作確認用テストスクリプト (CPUモード)
 """
 import os
 import sys
+import socket
+import psutil
+
+# macOSでpsutil.net_connections()がPermissionErrorになるのを回避
+def _find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
+
+psutil.net_connections = lambda: []
 
 # プロジェクトルートを追加
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 import nltk
 from embeddings.word_emb_elmo import WordEmbeddings
 from embeddings.sent_emb_sif import SentEmbeddings
-from model.method import SIFRank, SIFRank_plus, extract_keyphrases
+from model.method import SIFRank, SIFRank_plus
 from stanfordcorenlp import StanfordCoreNLP
 
 # NLTKデータダウンロード
@@ -29,9 +40,12 @@ except LookupError:
     nltk.download('stopwords', quiet=True)
 
 # パス設定
-options_file = "auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_options.json"
-weight_file = "auxiliary_data/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
-stanford_corenlp_dir = "stanford-corenlp-full-2018-02-27"
+options_file = os.path.join(PROJECT_ROOT, "auxiliary_data", "elmo_2x4096_512_2048cnn_2xhighway_options.json")
+weight_file = os.path.join(PROJECT_ROOT, "auxiliary_data", "elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5")
+stanford_corenlp_dir = os.path.join(PROJECT_ROOT, "stanford-corenlp-full-2018-02-27")
+
+# model/から実行して相対パスが正しく解決されるようにする
+os.chdir(os.path.join(PROJECT_ROOT, "model"))
 
 # CPUモードで初期化 (cuda_device=-1)
 print("Initializing ELMo (CPU mode)...")
@@ -53,21 +67,21 @@ print("\n[SIFRank] 重要語抽出中...")
 keyphrases = SIFRank(text, SIF, en_model, N=10, elmo_layers_weight=[0.0, 1.0, 0.0])
 print(f"\n抽出された重要語 (Top 10):")
 for i, (kp, score) in enumerate(keyphrases, 1):
-    print(f"  {i}. {kp} (score: {score:.4f})")
+    print(f"     {i}. {kp} (score: {score:.4f})")
 
 # SIFRank+
 print("\n[SIFRank+] 重要語抽出中...")
 keyphrases_plus = SIFRank_plus(text, SIF, en_model, N=10, elmo_layers_weight=[0.0, 1.0, 0.0])
 print(f"\n抽出された重要語 (Top 10):")
 for i, (kp, score) in enumerate(keyphrases_plus, 1):
-    print(f"  {i}. {kp} (score: {score:.4f})")
+    print(f"     {i}. {kp} (score: {score:.4f})")
 
-# extract_keyphrases
-print("\n[extract_keyphrases] 重要語抽出中...")
-keyphrases_extract = extract_keyphrases(text, SIF, en_model, rank_method="sifrank", N=5)
+# SIFRank (Top 5)
+print("\n[SIFRank (Top 5)] 重要語抽出中...")
+keyphrases_5 = SIFRank(text, SIF, en_model, N=5, elmo_layers_weight=[0.0, 1.0, 0.0])
 print(f"\n抽出された重要語 (Top 5):")
-for i, (kp, score) in enumerate(keyphrases_extract, 1):
-    print(f"  {i}. {kp} (score: {score:.4f})")
+for i, (kp, score) in enumerate(keyphrases_5, 1):
+    print(f"     {i}. {kp} (score: {score:.4f})")
 
 print("\n" + "="*60)
 print("テスト完了！環境構築成功しました。")
