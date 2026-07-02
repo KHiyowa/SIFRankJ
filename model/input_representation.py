@@ -24,16 +24,10 @@ class InputTextObj:
         self.tokens = en_model.word_tokenize(text)
         self.tokens_tagged = en_model.pos_tag(text)
         assert len(self.tokens) == len(self.tokens_tagged)
-        current_stopwords = getattr(en_model, "stopwords", stopword_dict)
-        self.stopwords = current_stopwords
         for i, token in enumerate(self.tokens):
-            if token.lower() in current_stopwords or token in current_stopwords:
+            if token.lower() in stopword_dict:
                 self.tokens_tagged[i] = (token, "IN")
-        self.normalize_token = getattr(en_model, "normalize_token", None)
-        self.normalize_phrase = getattr(en_model, "normalize_phrase", None)
-        self.sentence_delimiters = getattr(en_model, "sentence_delimiters", {'.'})
-        phrase_joiner = getattr(en_model, "phrase_joiner", " ")
-        self.keyphrase_candidate = extractor.extract_candidates(self.tokens_tagged, joiner=phrase_joiner)
+        self.keyphrase_candidate = extractor.extract_candidates(self.tokens_tagged, en_model)
 
 # if __name__ == '__main__':
 #     text = "Adaptive state feedback control for a class of linear systems with unknown bounds of uncertainties The problem of adaptive robust stabilization for a class of linear time-varying systems with disturbance and nonlinear uncertainties is considered. The bounds of the disturbance and uncertainties are assumed to be unknown, being even arbitrary. For such uncertain dynamical systems, the adaptive robust state feedback controller is obtained. And the resulting closed-loop systems are asymptotically stable in theory. Moreover, an adaptive robust state feedback control scheme is given. The scheme ensures the closed-loop systems exponentially practically stable and can be used in practical engineering. Finally, simulations show that the control scheme is effective"

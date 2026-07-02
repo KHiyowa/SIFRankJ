@@ -3,7 +3,6 @@
 # __author__ = "Sponge"
 # Date: 2019/6/19
 import numpy
-import os
 import torch
 import nltk
 from nltk.corpus import stopwords
@@ -11,26 +10,6 @@ english_punctuations = [',', '.', ':', ';', '?', '(', ')', '[', ']', '&', '!', '
 stop_words = set(stopwords.words("english"))
 wnl=nltk.WordNetLemmatizer()
 considered_tags = {'NN', 'NNS', 'NNP', 'NNPS', 'JJ','VBG'}
-
-def normalize_english_token(word):
-    return wnl.lemmatize(word.lower())
-
-def resolve_weightfile_path(weightfile):
-    if os.path.exists(weightfile):
-        return weightfile
-    module_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(module_dir)
-    candidates = [
-        os.path.join(module_dir, weightfile),
-        os.path.join(project_root, weightfile),
-        os.path.join(project_root, weightfile.lstrip("./")),
-    ]
-    if weightfile.startswith("../"):
-        candidates.append(os.path.join(project_root, weightfile[3:]))
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return candidate
-    return weightfile
 
 class SentEmbeddings():
 
@@ -40,8 +19,7 @@ class SentEmbeddings():
                  weightfile_finetune='../auxiliary_data/inspec_vocab.txt',
                  weightpara_pretrain=2.7e-4,
                  weightpara_finetune=2.7e-4,
-                 lamda=1.0,database="",embeddings_type="elmo",
-                 token_normalizer=normalize_english_token):
+                 lamda=1.0,database="",embeddings_type="elmo"):
 
         if(database=="Inspec"):
             weightfile_finetune = '../auxiliary_data/inspec_vocab.txt'
@@ -53,14 +31,11 @@ class SentEmbeddings():
             weightfile_finetune = '../auxiliary_data/enwiki_vocab_min200.txt'
 
         self.word2weight_pretrain = get_word_weight(weightfile_pretrain, weightpara_pretrain)
-        self.word2weight_finetune = {}
-        if database != "":
-            self.word2weight_finetune = get_word_weight(weightfile_finetune, weightpara_finetune)
+        self.word2weight_finetune = get_word_weight(weightfile_finetune, weightpara_finetune)
         self.word_embeddor = word_embeddor
         self.lamda=lamda
         self.database=database
         self.embeddings_type=embeddings_type
-        self.token_normalizer=token_normalizer
 
     def get_tokenized_sent_embeddings(self, text_obj, if_DS=False, if_EA=False):
         """
@@ -73,11 +48,11 @@ class SentEmbeddings():
         if(self.embeddings_type=="elmo" and if_DS==False):
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings([text_obj.tokens])
         elif(self.embeddings_type=="elmo" and if_DS==True and if_EA==False):
-            tokens_segmented = get_sent_segmented(text_obj.tokens, delimiters=getattr(text_obj, "sentence_delimiters", None))
+            tokens_segmented = get_sent_segmented(text_obj.tokens)
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings(tokens_segmented)
             elmo_embeddings = splice_embeddings(elmo_embeddings,tokens_segmented)
         elif (self.embeddings_type == "elmo" and if_DS == True and if_EA == True):
-            tokens_segmented = get_sent_segmented(text_obj.tokens, delimiters=getattr(text_obj, "sentence_delimiters", None))
+            tokens_segmented = get_sent_segmented(text_obj.tokens)
             elmo_embeddings, elmo_mask = self.word_embeddor.get_tokenized_words_embeddings(tokens_segmented)
             elmo_embeddings = context_embeddings_alignment(elmo_embeddings, tokens_segmented)
             elmo_embeddings = splice_embeddings(elmo_embeddings, tokens_segmented)
@@ -92,9 +67,7 @@ class SentEmbeddings():
 
         candidate_embeddings_list=[]
 
-        token_normalizer = getattr(text_obj, "normalize_token", None) or self.token_normalizer
-        weight_list = get_weight_list(self.word2weight_pretrain, self.word2weight_finetune, text_obj.tokens,
-                                      lamda=self.lamda, database=self.database, normalizer=token_normalizer)
+        weight_list = get_weight_list(self.word2weight_pretrain, self.word2weight_finetune, text_obj.tokens, lamda=self.lamda, database=self.database)
 
         sent_embeddings = get_weighted_average(text_obj.tokens, text_obj.tokens_tagged, weight_list, elmo_embeddings[0], embeddings_type=self.embeddings_type)
 
@@ -154,17 +127,15 @@ def mat_division(vector_a, vector_b):
     #     return
     return torch.from_numpy(numpy.dot(A.I,B))
 
-def get_sent_segmented(tokens, delimiters=None):
+def get_sent_segmented(tokens):
     min_seq_len = 16
-    if delimiters is None:
-        delimiters = {'.'}
     sents_sectioned = []
     if (len(tokens) <= min_seq_len):
         sents_sectioned.append(tokens)
     else:
         position = 0
         for i, token in enumerate(tokens):
-            if (token in delimiters):
+            if (token == '.'):
                 if (i - position >= min_seq_len):
                     sents_sectioned.append(tokens[position:i + 1])
                     position = i + 1
@@ -268,9 +239,9 @@ def get_candidate_weighted_average(tokenized_sents, weight_list, embeddings_list
 
     return 0
 
-def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight", normalizer=normalize_english_token):
+def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight"):
 
-    word=normalizer(word)
+    word=wnl.lemmatize(word)
 
     if(word in word2weight):#
         return word2weight[word]
@@ -287,23 +258,22 @@ def get_oov_weight(tokenized_sents,word2weight,word,method="max_weight", normali
     if(method=="max_weight"):#Return the max weight of word in the tokenized_sents
         max=0.0
         for w in tokenized_sents:
-            w = normalizer(w)
             if(w in word2weight and word2weight[w]>max):
                 max=word2weight[w]
         return max
     return 0.0
 
-def get_weight_list(word2weight_pretrain, word2weight_finetune, tokenized_sents, lamda, database="", normalizer=normalize_english_token):
+def get_weight_list(word2weight_pretrain, word2weight_finetune, tokenized_sents, lamda, database=""):
     weight_list = []
     for word in tokenized_sents:
-        word = normalizer(word)
+        word = word.lower()
 
         if(database==""):
-            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight", normalizer=normalizer)
+            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight")
             weight=weight_pretrain
         else:
-            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight", normalizer=normalizer)
-            weight_finetune = get_oov_weight(tokenized_sents, word2weight_finetune, word, method="max_weight", normalizer=normalizer)
+            weight_pretrain = get_oov_weight(tokenized_sents, word2weight_pretrain, word, method="max_weight")
+            weight_finetune = get_oov_weight(tokenized_sents, word2weight_finetune, word, method="max_weight")
             weight = lamda * weight_pretrain + (1.0 - lamda) * weight_finetune
         weight_list.append(weight)
 
@@ -331,32 +301,18 @@ def get_word_weight(weightfile="", weightpara=2.7e-4):
         weightpara = 1.0
     word2weight = {}
     word2fre = {}
-    weightfile = resolve_weightfile_path(weightfile)
     with open(weightfile, encoding='UTF-8') as f:
         lines = f.readlines()
     # sum_num_words = 0
     sum_fre_words = 0
-    skipped = 0
     for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        word_fre = line.rsplit(maxsplit=1)
+        word_fre = line.split()
         # sum_num_words += 1
         if (len(word_fre) == 2):
-            try:
-                frequency = float(word_fre[1])
-            except ValueError:
-                skipped += 1
-                continue
-            word2fre[word_fre[0]] = frequency
-            sum_fre_words += frequency
+            word2fre[word_fre[0]] = float(word_fre[1])
+            sum_fre_words += float(word_fre[1])
         else:
-            skipped += 1
-    if skipped > 0:
-        print("Skipped " + str(skipped) + " malformed word frequency lines in " + weightfile)
-    if sum_fre_words == 0.0:
-        return word2weight
+            print(line)
     for key, value in word2fre.items():
         word2weight[key] = weightpara / (weightpara + value / sum_fre_words)
         # word2weight[key] = 1.0 #method of RVA

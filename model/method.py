@@ -12,16 +12,6 @@ import torch
 wnl=nltk.WordNetLemmatizer()
 stop_words = set(stopwords.words("english"))
 
-def normalize_english_phrase(phrase):
-    return wnl.lemmatize(phrase.lower())
-
-def get_phrase_normalizer(text_obj=None):
-    if text_obj is not None:
-        normalizer = getattr(text_obj, "normalize_phrase", None)
-        if normalizer is not None:
-            return normalizer
-    return normalize_english_phrase
-
 def cos_sim_gpu(x,y):
     assert x.shape[0]==y.shape[0]
     zero_tensor = torch.zeros((1, x.shape[0])).cuda()
@@ -107,10 +97,10 @@ def get_all_dist(candidate_embeddings_list, text_obj, dist_list):
     '''
 
     dist_all={}
-    normalize_phrase = get_phrase_normalizer(text_obj)
     for i, emb in enumerate(candidate_embeddings_list):
         phrase = text_obj.keyphrase_candidate[i][0]
-        phrase = normalize_phrase(phrase)
+        phrase = phrase.lower()
+        phrase = wnl.lemmatize(phrase)
         if(phrase in dist_all):
             #store the No. and distance
             dist_all[phrase].append(dist_list[i])
@@ -119,7 +109,7 @@ def get_all_dist(candidate_embeddings_list, text_obj, dist_list):
             dist_all[phrase].append(dist_list[i])
     return dist_all
 
-def get_final_dist(dist_all, method="average", stopword_set=None):
+def get_final_dist(dist_all, method="average"):
     '''
     :param dist_all:
     :param method: "average"
@@ -127,7 +117,6 @@ def get_final_dist(dist_all, method="average", stopword_set=None):
     '''
 
     final_dist={}
-    current_stop_words = stop_words if stopword_set is None else stopword_set
 
     if(method=="average"):
 
@@ -135,7 +124,7 @@ def get_final_dist(dist_all, method="average", stopword_set=None):
             sum_dist = 0.0
             for dist in dist_list:
                 sum_dist += dist
-            if (phrase in current_stop_words):
+            if (phrase in stop_words):
                 sum_dist = 0.0
             final_dist[phrase] = sum_dist/float(len(dist_list))
         return final_dist
@@ -147,13 +136,14 @@ def softmax(x):
     return softmax_x
 
 
-def get_position_score(keyphrase_candidate_list, position_bias, normalize_phrase=normalize_english_phrase):
+def get_position_score(keyphrase_candidate_list, position_bias):
     length = len(keyphrase_candidate_list)
     position_score ={}
     for i,kc in enumerate(keyphrase_candidate_list):
         np = kc[0]
         p = kc[1][0]
-        np = normalize_phrase(np)
+        np = np.lower()
+        np = wnl.lemmatize(np)
         if np in position_score:
 
             position_score[np] += 0.0
@@ -192,7 +182,7 @@ def SIFRank(text, SIF, en_model, method="average", N=15,
         dist = get_dist_cosine(sent_embeddings, emb, sent_emb_method, elmo_layers_weight=elmo_layers_weight)
         dist_list.append(dist)
     dist_all = get_all_dist(candidate_embeddings_list, text_obj, dist_list)
-    dist_final = get_final_dist(dist_all, method='average', stopword_set=getattr(text_obj, "stopwords", None))
+    dist_final = get_final_dist(dist_all, method='average')
     dist_sorted = sorted(dist_final.items(), key=lambda x: x[1], reverse=True)
     return dist_sorted[0:N]
 
@@ -211,17 +201,14 @@ def SIFRank_plus(text, SIF, en_model, method="average", N=15,
     """
     text_obj = input_representation.InputTextObj(en_model, text)
     sent_embeddings, candidate_embeddings_list = SIF.get_tokenized_sent_embeddings(text_obj,if_DS=if_DS,if_EA=if_EA)
-    normalize_phrase = get_phrase_normalizer(text_obj)
-    position_score = get_position_score(text_obj.keyphrase_candidate, position_bias, normalize_phrase=normalize_phrase)
-    if len(position_score) == 0:
-        return []
+    position_score = get_position_score(text_obj.keyphrase_candidate, position_bias)
     average_score = sum(position_score.values()) / (float)(len(position_score))#Little change here
     dist_list = []
     for i, emb in enumerate(candidate_embeddings_list):
         dist = get_dist_cosine(sent_embeddings, emb, sent_emb_method, elmo_layers_weight=elmo_layers_weight)
         dist_list.append(dist)
     dist_all = get_all_dist(candidate_embeddings_list, text_obj, dist_list)
-    dist_final = get_final_dist(dist_all, method='average', stopword_set=getattr(text_obj, "stopwords", None))
+    dist_final = get_final_dist(dist_all, method='average')
     for np,dist in dist_final.items():
         if np in position_score:
             dist_final[np] = dist*position_score[np]/average_score#Little change here
@@ -229,23 +216,3 @@ def SIFRank_plus(text, SIF, en_model, method="average", N=15,
     return dist_sorted[0:N]
 
 
-def extract_keyphrases(text, SIF, en_model, rank_method="sifrank", method="average", N=15,
-            sent_emb_method="elmo", elmo_layers_weight=[0.0, 1.0, 0.0], if_DS=True, if_EA=True, position_bias=3.4):
-    """
-    Dispatch keyphrase extraction between SIFRank and SIFRank+.
-    :param rank_method: 'sifrank' or 'sifrank_plus' (also accepts 'sifrank+' and 'plus')
-    """
-    rank_method = rank_method.lower()
-    if rank_method in {"sifrank", "base"}:
-        return SIFRank(
-            text, SIF, en_model, method=method, N=N,
-            sent_emb_method=sent_emb_method, elmo_layers_weight=elmo_layers_weight,
-            if_DS=if_DS, if_EA=if_EA
-        )
-    if rank_method in {"sifrank_plus", "sifrank+", "plus"}:
-        return SIFRank_plus(
-            text, SIF, en_model, method=method, N=N,
-            sent_emb_method=sent_emb_method, elmo_layers_weight=elmo_layers_weight,
-            if_DS=if_DS, if_EA=if_EA, position_bias=position_bias
-        )
-    raise ValueError("rank_method must be 'sifrank' or 'sifrank_plus'.")

@@ -1,11 +1,6 @@
 # Use Python 3.10. AllenNLP 2.10.1 requires torch>=1.10,<1.13,
 # and its scientific-stack requirements need caps for current PyPI.
-# AllenNLP 2.10.1 is the newest released AllenNLP and still caps spaCy at <3.4.
-# GiNZA 5.2 requires spaCy >=3.4.4, so use the latest GiNZA 5.1.x line here.
 -c constraints.txt
 allennlp==2.10.1
-elmoformanylangs==0.0.4.post2
-ginza==5.1.3
-ja-ginza==5.1.3
 spacy>=3.3.0,<3.4.0
 stanfordcorenlp==3.9.1.1

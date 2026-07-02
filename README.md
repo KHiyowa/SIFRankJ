@@ -18,9 +18,6 @@ scipy 1.10.1
 scikit-learn 1.2.2
 overrides 3.1.0
 allennlp 2.10.1
-elmoformanylangs 0.0.4.post2
-ginza 5.1.3
-ja-ginza 5.1.3
 spacy >=3.3,<3.4
 StanfordCoreNLP 3.9.1.1 (for the original English pipeline)
 ```
@@ -38,26 +35,7 @@ python3.10 -m pip install --no-cache-dir --force-reinstall -r requirements-gpu-c
 ```
 ## Download
 * ELMo ``elmo_2x4096_512_2048cnn_2xhighway_options.json`` and ``elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5`` from [here](https://allennlp.org/elmo) , and save it to the ``auxiliary_data/`` directory
-* ELMoForManyLangs Japanese model directory containing ``config.json``, ``encoder.pkl``, ``token_embedder.pkl``, ``word.dic``, and ``char.dic`` can also be saved under ``auxiliary_data/ja.model/``. The ELMoForManyLangs wrapper runs on CPU by default; pass ``cuda_device=0`` only when your PyTorch CUDA build supports your GPU.
 * StanfordCoreNLP ``stanford-corenlp-full-2018-02-27`` from [here](https://stanfordnlp.github.io/CoreNLP/), and save it to anywhere
-
-``GinzaNLPAdapter`` uses GiNZA's built-in ``STOP_WORDS`` by default. Pass ``stopwords=[]`` to disable them or pass your own iterable to override them.
-Pass ``split_mode="A"``, ``"B"``, or ``"C"`` to control Sudachi tokenization granularity.
-
-Build Japanese Wikipedia frequency files for split modes A and B with:
-
-```
-python3.10 util/build_ja_wikipedia_vocab.py /path/to/wikiextractor/output --modes A B --output-dir auxiliary_data --output-prefix ja_wikipedia_vocab --use-ginza-stopwords
-```
-
-For large corpora, run Java Sudachi from the counter script:
-
-```
-python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode A --workers 32 --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_A.txt
-python3.10 util/count_sudachi_tokens.py /path/to/wikiextractor/output --mode B --workers 32 --sudachi-jar ../sudachi/sudachi-0.7.5.jar --output auxiliary_data/ja_wikipedia_vocab_B.txt
-```
-
-The counter script decodes WikiExtractor JSONL inputs and sends only their text fields to Sudachi by default.
 
 ## Usage
 ```
@@ -83,14 +61,6 @@ print(keyphrases)
 print(keyphrases_)
 ```
 
-Use ``extract_keyphrases`` to switch between SIFRank and SIFRank+:
-
-```
-from model.method import extract_keyphrases
-
-keyphrases = extract_keyphrases(text, SIF, ja_model, rank_method="sifrank", N=15)
-keyphrases_plus = extract_keyphrases(text, SIF, ja_model, rank_method="sifrank_plus", N=15, position_bias=3.4)
-```
 ## Evaluate the model
 Use this ``eval/sifrank_eval.py`` to evaluate SIFRank on ``Inspec``, ``SemEval2017`` and ``DUC2001 datasets``
 We also have evaluation codes for other baseline models. We will organize and upload them later, so stay tuned.
